@@ -1,7 +1,7 @@
 <<!DOCTYPE html>
 <html>
 <head>
-  <title>Fire CEs</title>
+  <title>CE</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
@@ -9,10 +9,11 @@
     main { max-width: 1440px; margin: 0 auto; }
     h1 { margin: 0 0 8px; font-size: 28px; }
     p { margin: 0; color: #53635f; }
-    .search { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0 14px; }
+    .source-controls { display: grid; grid-template-columns: minmax(0, 280px); gap: 12px; margin: 20px 0 14px; }
+    .search { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0 14px; }
     label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 650; }
-    input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #9aaea7; border-radius: 4px; font: inherit; }
-    input:focus-visible { outline: 3px solid #a8d9cb; }
+    input, select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #9aaea7; border-radius: 4px; font: inherit; }
+    input:focus-visible, select:focus-visible { outline: 3px solid #a8d9cb; }
     #count { grid-column: 1 / -1; color: #53635f; white-space: nowrap; }
     .table-wrap { overflow-x: auto; border: 1px solid #cbd7d3; border-radius: 4px; background: white; }
     table { width: 100%; border-collapse: collapse; text-align: left; }
@@ -28,8 +29,21 @@
 </head>
 <body>
   <main>
-    <h1>Fire CEs</h1>
+    <h1>CE</h1>
+    <div class="source-controls">
+      <div>
+        <label for="dataFile">Data file</label>
+        <select id="dataFile" aria-label="Select data file">
+          <option value="assignments_report.csv">Fire</option>
+          <option value="credentials_report.csv">Medic</option>
+        </select>
+      </div>
+    </div>
     <div class="search">
+      <div>
+        <label for="nameSearch">Name</label>
+        <input type="search" id="nameSearch" placeholder="Search name" autocomplete="off">
+      </div>
       <div>
         <label for="districtSearch">District</label>
         <input type="search" id="districtSearch" placeholder="Search district" autocomplete="off">
@@ -53,9 +67,11 @@
     </div>
   </main>
 <script>
+const nameSearch = document.getElementById('nameSearch');
 const districtSearch = document.getElementById('districtSearch');
 const stationSearch = document.getElementById('stationSearch');
 const shiftSearch = document.getElementById('shiftSearch');
+const dataFileSelect = document.getElementById('dataFile');
 const resultsBody = document.getElementById('results');
 const count = document.getElementById('count');
 const message = document.getElementById('message');
@@ -91,23 +107,69 @@ function parseCsv(text) {
   return rows;
 }
 
+function setTableMode(isCredentialsReport) {
+  const headerRow = document.querySelector('thead tr');
+  if (isCredentialsReport) {
+    headerRow.innerHTML = '<th>Personnel</th><th>Position</th><th>District</th><th>Station</th><th>Shift</th><th>Progress %</th><th>Valid Until (Months)</th>';
+  } else {
+    headerRow.innerHTML = '<th>Personnel</th><th>Position</th><th>District</th><th>Station</th><th>Shift</th><th>Past Due Count</th><th>Past Due Assignments</th>';
+  }
+}
+
 function renderResults() {
+  const nameTerm = nameSearch.value.trim().toLocaleLowerCase();
   const districtTerm = districtSearch.value.trim().toLocaleLowerCase();
   const stationTerm = stationSearch.value.trim().toLocaleLowerCase();
   const shiftTerm = shiftSearch.value.trim().toLocaleLowerCase();
+  const isCredentialsReport = dataFileSelect.value.toLowerCase().includes('credentials_report');
   const matches = personnelRecords.filter(person =>
-    person.district.toLocaleLowerCase().includes(districtTerm) &&
-    person.station.toLocaleLowerCase().includes(stationTerm) &&
-    person.shift.toLocaleLowerCase().includes(shiftTerm)
+    (person.name || '').toLocaleLowerCase().includes(nameTerm) &&
+    (person.district || '').toLocaleLowerCase().includes(districtTerm) &&
+    (person.station || '').toLocaleLowerCase().includes(stationTerm) &&
+    (person.shift || '').toLocaleLowerCase().includes(shiftTerm)
   );
   resultsBody.replaceChildren();
   message.hidden = matches.length > 0;
   message.textContent = 'No personnel match these filters.';
+
+  if (isCredentialsReport) {
+    const averageMonths = matches.length
+      ? matches.reduce((total, person) => total + (Number(person.monthsUntilExpiry) || 0), 0) / matches.length
+      : 0;
+    count.textContent = `${matches.length} ${matches.length === 1 ? 'person' : 'people'} • Avg ${averageMonths.toFixed(1)} months left`;
+    const fragment = document.createDocumentFragment();
+    for (const person of matches) {
+      const row = document.createElement('tr');
+      const personCell = document.createElement('td');
+      const name = document.createElement('div');
+      const email = document.createElement('div');
+      const position = document.createElement('td');
+      const district = document.createElement('td');
+      const station = document.createElement('td');
+      const shift = document.createElement('td');
+      const progressCell = document.createElement('td');
+      const validUntilCell = document.createElement('td');
+      name.textContent = person.name;
+      email.className = 'email';
+      email.textContent = person.email;
+      personCell.append(name, email);
+      position.textContent = person.position;
+      district.textContent = person.district;
+      station.textContent = person.station;
+      shift.textContent = person.shift;
+      progressCell.textContent = `${(Number(person.progress) || 0).toFixed(1)}%`;
+      validUntilCell.textContent = `${(Number(person.monthsUntilExpiry) || 0).toFixed(1)} months`;
+      row.append(personCell, position, district, station, shift, progressCell, validUntilCell);
+      fragment.append(row);
+    }
+    resultsBody.append(fragment);
+    return;
+  }
+
   const assignmentTotal = matches.reduce((total, assignment) => total + assignment.titles.length, 0);
   count.textContent = `${assignmentTotal} past due ${assignmentTotal === 1 ? 'assignment' : 'assignments'} for ${matches.length} ${matches.length === 1 ? 'person' : 'people'}`;
   const fragment = document.createDocumentFragment();
   for (const assignment of matches) {
-    let personnelRecords = [];
     const row = document.createElement('tr');
     const personCell = document.createElement('td');
     const name = document.createElement('div');
@@ -141,53 +203,124 @@ function renderResults() {
   resultsBody.append(fragment);
 }
 
-[districtSearch, stationSearch, shiftSearch].forEach(input => input.addEventListener('input', renderResults));
-fetch('assignments_report.csv')
-  .then(response => {
-    if (!response.ok) throw new Error(`Could not load assignments_report.csv (${response.status})`);
-    return response.text();
-  })
-  .then(text => {
-    const rows = parseCsv(text.replace(/^\uFEFF/, ''));
-    const headers = rows.shift().map(header => header.trim().toLocaleLowerCase());
-    const column = name => headers.indexOf(name.toLocaleLowerCase());
-    const disciplineIndex = column('Specialty Discipline');
-    const nameIndex = column('Full Name');
-    const emailIndex = column('Email');
-    const positionIndex = column('User Positions');
-    const assignmentIndex = column('Assignment');
-    const statusIndex = column('Assignment Status');
-    if ([disciplineIndex, nameIndex, emailIndex, positionIndex, assignmentIndex, statusIndex].some(index => index < 0)) {
-      throw new Error('The CSV is missing a required personnel column');
-    }
-    const personnel = new Map();
-    for (const values of rows) {
-      const discipline = values[disciplineIndex] || '';
-      const name = values[nameIndex] || '';
-      const email = values[emailIndex] || '';
-      const key = email.toLocaleLowerCase() || name.toLocaleLowerCase();
-      if (!personnel.has(key)) {
-        personnel.set(key, {
-          name,
-          email,
-          position: values[positionIndex] || '',
-          district: (discipline.match(/DISTRICT\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
-          station: (discipline.match(/STATION\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
-          shift: (discipline.match(/SHIFT\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
-          titles: []
-        });
+[nameSearch, districtSearch, stationSearch, shiftSearch].forEach(input => input.addEventListener('input', renderResults));
+
+function loadSelectedFile() {
+  const fileName = dataFileSelect.value;
+  const isCredentialsReport = fileName.toLowerCase().includes('credentials_report');
+  setTableMode(isCredentialsReport);
+  count.textContent = 'Loading records...';
+  message.hidden = true;
+  message.textContent = '';
+  fetch(fileName)
+    .then(response => {
+      if (!response.ok) throw new Error(`Could not load ${fileName} (${response.status})`);
+      return response.text();
+    })
+    .then(text => {
+      const rows = parseCsv(text.replace(/^\uFEFF/, ''));
+      const headers = rows.shift().map(header => header.trim().toLocaleLowerCase());
+      const column = name => headers.indexOf(name.toLocaleLowerCase());
+      const disciplineIndex = column('Specialty Discipline');
+      const nameIndex = column('Full Name');
+      const emailIndex = column('Email');
+      const positionIndex = column('User Positions');
+      const assignmentIndex = column('Assignment');
+      const statusIndex = column('Assignment Status');
+      const validUntilIndex = column('Credential Valid Until');
+      const progressIndex = column('Progress');
+
+      if (isCredentialsReport) {
+        if ([disciplineIndex, nameIndex, emailIndex, positionIndex, validUntilIndex, progressIndex].some(index => index < 0)) {
+          throw new Error('The credentials CSV is missing a required personnel column');
+        }
+        const personnel = new Map();
+        const today = new Date();
+        const monthsBetween = (futureDate) => {
+          const diffMs = futureDate.getTime() - today.getTime();
+          const days = diffMs / (1000 * 60 * 60 * 24);
+          return Math.max(0, days / 30.4375);
+        };
+
+        for (const values of rows) {
+          const discipline = values[disciplineIndex] || '';
+          const name = values[nameIndex] || '';
+          const email = values[emailIndex] || '';
+          const key = email.toLocaleLowerCase() || name.toLocaleLowerCase();
+          const validUntilValue = values[validUntilIndex] || '';
+          const validUntilDate = validUntilValue ? new Date(validUntilValue) : null;
+          const progressValue = Number.parseFloat((values[progressIndex] || '').replace('%', '').trim());
+
+          if (!personnel.has(key)) {
+            personnel.set(key, {
+              name,
+              email,
+              position: values[positionIndex] || '',
+              district: (discipline.match(/DISTRICT\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+              station: (discipline.match(/STATION\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+              shift: (discipline.match(/SHIFT\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+              validUntilMonths: [],
+              progressValues: []
+            });
+          }
+
+          if (validUntilDate && !Number.isNaN(validUntilDate.getTime())) {
+            personnel.get(key).validUntilMonths.push(monthsBetween(validUntilDate));
+          }
+
+          if (Number.isFinite(progressValue)) {
+            personnel.get(key).progressValues.push(progressValue);
+          }
+        }
+
+        personnelRecords = [...personnel.values()].map(person => ({
+          ...person,
+          progress: person.progressValues.length
+            ? person.progressValues.reduce((total, value) => total + value, 0) / person.progressValues.length
+            : 0,
+          monthsUntilExpiry: person.validUntilMonths.length
+            ? Math.min(...person.validUntilMonths)
+            : 0
+        }));
+        renderResults();
+        return;
       }
-      if ((values[statusIndex] || '').trim().toLocaleLowerCase() === 'past due') {
-        personnel.get(key).titles.push(values[assignmentIndex] || '');
+
+      if ([disciplineIndex, nameIndex, emailIndex, positionIndex, assignmentIndex, statusIndex].some(index => index < 0)) {
+        throw new Error('The CSV is missing a required personnel column');
       }
-    }
-    personnelRecords = [...personnel.values()];
-    renderResults();
-  })
-  .catch(error => {
-    count.textContent = 'Unable to load records';
-    message.textContent = `${error.message}. Open the page through a local web server to let it access the CSV.`;
-    message.hidden = false;
-  });
+      const personnel = new Map();
+      for (const values of rows) {
+        const discipline = values[disciplineIndex] || '';
+        const name = values[nameIndex] || '';
+        const email = values[emailIndex] || '';
+        const key = email.toLocaleLowerCase() || name.toLocaleLowerCase();
+        if (!personnel.has(key)) {
+          personnel.set(key, {
+            name,
+            email,
+            position: values[positionIndex] || '',
+            district: (discipline.match(/DISTRICT\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+            station: (discipline.match(/STATION\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+            shift: (discipline.match(/SHIFT\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+            titles: []
+          });
+        }
+        if ((values[statusIndex] || '').trim().toLocaleLowerCase() === 'past due') {
+          personnel.get(key).titles.push(values[assignmentIndex] || '');
+        }
+      }
+      personnelRecords = [...personnel.values()];
+      renderResults();
+    })
+    .catch(error => {
+      count.textContent = 'Unable to load records';
+      message.textContent = `${error.message}. Open the page through a local web server to let it access the CSV.`;
+      message.hidden = false;
+    });
+}
+
+dataFileSelect.addEventListener('change', loadSelectedFile);
+loadSelectedFile();
 </script>
 </body>
