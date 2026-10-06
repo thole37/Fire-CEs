@@ -1,0 +1,26 @@
+name: Auto Update CSV
+
+on:
+  schedule:
+    - cron: "*/120 * * * *"   # every 120 minutes
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Download latest CSV from OneDrive
+        run: |
+          curl -L -o data.csv "https://houtx-my.sharepoint.com/personal/tho_le_houstontx_gov/Documents/Documents/Chart/Fire%20CEs/assignments_report.csv?download=1"
+
+      - name: Commit updated CSV
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add data.csv
+          git commit -m "Auto-update CSV from OneDrive"
+          git push
