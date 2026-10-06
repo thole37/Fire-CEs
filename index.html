@@ -142,9 +142,9 @@ function renderResults() {
 }
 
 [districtSearch, stationSearch, shiftSearch].forEach(input => input.addEventListener('input', renderResults));
-fetch('data.csv')
+fetch('assignments_report.csv')
   .then(response => {
-    if (!response.ok) throw new Error(`Could not load data.csv (${response.status})`);
+    if (!response.ok) throw new Error(`Could not load assignments_report.csv (${response.status})`);
     return response.text();
   })
   .then(text => {
