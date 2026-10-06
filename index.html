@@ -1,0 +1,193 @@
+<<!DOCTYPE html>
+<html>
+<head>
+  <title>Fire CEs</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { margin: 0; padding: 32px 20px; background: #eef3f1; color: #202a32; font-family: "Segoe UI", Tahoma, sans-serif; }
+    main { max-width: 1440px; margin: 0 auto; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { margin: 0; color: #53635f; }
+    .search { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0 14px; }
+    label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 650; }
+    input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #9aaea7; border-radius: 4px; font: inherit; }
+    input:focus-visible { outline: 3px solid #a8d9cb; }
+    #count { grid-column: 1 / -1; color: #53635f; white-space: nowrap; }
+    .table-wrap { overflow-x: auto; border: 1px solid #cbd7d3; border-radius: 4px; background: white; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid #e2e9e6; vertical-align: top; }
+    th { background: #eaf1ee; color: #344740; font-size: 12px; text-transform: uppercase; }
+    td { font-size: 14px; }
+    .email { margin-top: 3px; color: #5c6b66; }
+    .assignment-list { margin: 0; padding-left: 18px; }
+    .assignment-list li + li { margin-top: 5px; }
+    #message { padding: 24px; color: #53635f; text-align: center; }
+    @media (max-width: 600px) { body { padding: 24px 12px; } .search { grid-template-columns: 1fr; } #count { grid-column: auto; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Fire CEs</h1>
+    <div class="search">
+      <div>
+        <label for="districtSearch">District</label>
+        <input type="search" id="districtSearch" placeholder="Search district" autocomplete="off">
+      </div>
+      <div>
+        <label for="stationSearch">Station</label>
+        <input type="search" id="stationSearch" placeholder="Search station" autocomplete="off">
+      </div>
+      <div>
+        <label for="shiftSearch">Shift</label>
+        <input type="search" id="shiftSearch" placeholder="Search shift" autocomplete="off">
+      </div>
+      <div id="count" aria-live="polite">Loading records...</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Personnel</th><th>Position</th><th>District</th><th>Station</th><th>Shift</th><th>Past Due Count</th><th>Past Due Assignments</th></tr></thead>
+        <tbody id="results"></tbody>
+      </table>
+      <div id="message" role="status" hidden></div>
+    </div>
+  </main>
+<script>
+const districtSearch = document.getElementById('districtSearch');
+const stationSearch = document.getElementById('stationSearch');
+const shiftSearch = document.getElementById('shiftSearch');
+const resultsBody = document.getElementById('results');
+const count = document.getElementById('count');
+const message = document.getElementById('message');
+let personnelRecords = [];
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (character === '"') {
+      if (quoted && text[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else quoted = !quoted;
+    } else if (character === ',' && !quoted) {
+      row.push(field);
+      field = '';
+    } else if ((character === '\n' || character === '\r') && !quoted) {
+      if (character === '\r' && text[index + 1] === '\n') index += 1;
+      row.push(field);
+      if (row.some(value => value !== '')) rows.push(row);
+      row = [];
+      field = '';
+    } else field += character;
+  }
+  if (field !== '' || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
+function renderResults() {
+  const districtTerm = districtSearch.value.trim().toLocaleLowerCase();
+  const stationTerm = stationSearch.value.trim().toLocaleLowerCase();
+  const shiftTerm = shiftSearch.value.trim().toLocaleLowerCase();
+  const matches = personnelRecords.filter(person =>
+    person.district.toLocaleLowerCase().includes(districtTerm) &&
+    person.station.toLocaleLowerCase().includes(stationTerm) &&
+    person.shift.toLocaleLowerCase().includes(shiftTerm)
+  );
+  resultsBody.replaceChildren();
+  message.hidden = matches.length > 0;
+  message.textContent = 'No personnel match these filters.';
+  const assignmentTotal = matches.reduce((total, assignment) => total + assignment.titles.length, 0);
+  count.textContent = `${assignmentTotal} past due ${assignmentTotal === 1 ? 'assignment' : 'assignments'} for ${matches.length} ${matches.length === 1 ? 'person' : 'people'}`;
+  const fragment = document.createDocumentFragment();
+  for (const assignment of matches) {
+    let personnelRecords = [];
+    const row = document.createElement('tr');
+    const personCell = document.createElement('td');
+    const name = document.createElement('div');
+    const email = document.createElement('div');
+    const position = document.createElement('td');
+    const district = document.createElement('td');
+    const station = document.createElement('td');
+    const shift = document.createElement('td');
+    const assignmentCount = document.createElement('td');
+    const assignmentListCell = document.createElement('td');
+    const assignmentList = document.createElement('ul');
+    name.textContent = assignment.name;
+    email.className = 'email';
+    email.textContent = assignment.email;
+    personCell.append(name, email);
+    position.textContent = assignment.position;
+    district.textContent = assignment.district;
+    station.textContent = assignment.station;
+    shift.textContent = assignment.shift;
+    assignmentCount.textContent = assignment.titles.length;
+    assignmentList.className = 'assignment-list';
+    for (const title of assignment.titles) {
+      const item = document.createElement('li');
+      item.textContent = title;
+      assignmentList.append(item);
+    }
+    assignmentListCell.append(assignmentList);
+    row.append(personCell, position, district, station, shift, assignmentCount, assignmentListCell);
+    fragment.append(row);
+  }
+  resultsBody.append(fragment);
+}
+
+[districtSearch, stationSearch, shiftSearch].forEach(input => input.addEventListener('input', renderResults));
+fetch('data.csv')
+  .then(response => {
+    if (!response.ok) throw new Error(`Could not load data.csv (${response.status})`);
+    return response.text();
+  })
+  .then(text => {
+    const rows = parseCsv(text.replace(/^\uFEFF/, ''));
+    const headers = rows.shift().map(header => header.trim().toLocaleLowerCase());
+    const column = name => headers.indexOf(name.toLocaleLowerCase());
+    const disciplineIndex = column('Specialty Discipline');
+    const nameIndex = column('Full Name');
+    const emailIndex = column('Email');
+    const positionIndex = column('User Positions');
+    const assignmentIndex = column('Assignment');
+    const statusIndex = column('Assignment Status');
+    if ([disciplineIndex, nameIndex, emailIndex, positionIndex, assignmentIndex, statusIndex].some(index => index < 0)) {
+      throw new Error('The CSV is missing a required personnel column');
+    }
+    const personnel = new Map();
+    for (const values of rows) {
+      const discipline = values[disciplineIndex] || '';
+      const name = values[nameIndex] || '';
+      const email = values[emailIndex] || '';
+      const key = email.toLocaleLowerCase() || name.toLocaleLowerCase();
+      if (!personnel.has(key)) {
+        personnel.set(key, {
+          name,
+          email,
+          position: values[positionIndex] || '',
+          district: (discipline.match(/DISTRICT\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+          station: (discipline.match(/STATION\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+          shift: (discipline.match(/SHIFT\s*-\s*([^,]+)/i) || [])[1]?.trim() || '',
+          titles: []
+        });
+      }
+      if ((values[statusIndex] || '').trim().toLocaleLowerCase() === 'past due') {
+        personnel.get(key).titles.push(values[assignmentIndex] || '');
+      }
+    }
+    personnelRecords = [...personnel.values()];
+    renderResults();
+  })
+  .catch(error => {
+    count.textContent = 'Unable to load records';
+    message.textContent = `${error.message}. Open the page through a local web server to let it access the CSV.`;
+    message.hidden = false;
+  });
+</script>
+</body>
