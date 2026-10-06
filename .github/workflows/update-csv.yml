@@ -15,7 +15,7 @@ jobs:
 
       - name: Download latest CSV from OneDrive
         run: |
-          curl -L -o data.csv "https://houtx-my.sharepoint.com/personal/tho_le_houstontx_gov/Documents/Documents/Chart/Fire%20CEs/assignments_report.csv?download=1"
+          curl -L -o data.csv "https://houtx-my.sharepoint.com/:x:/g/personal/tho_le_houstontx_gov/IQA8lBHFNS67SaTSrxAidIz_AfKBQ8aD2HnKeRlWw0hQWmc?e=xjWFOz?download=1"
 
       - name: Commit updated CSV
         run: |
