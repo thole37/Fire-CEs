@@ -76,6 +76,31 @@ const resultsBody = document.getElementById('results');
 const count = document.getElementById('count');
 const message = document.getElementById('message');
 let personnelRecords = [];
+const rankOrder = [
+  'asst. fire chief',
+  'deputy chief',
+  'district chief',
+  'fire marshal',
+  'chief inspector',
+  'asst. fire marsh.',
+  'senior captain',
+  'comm. sr. captain',
+  'captain',
+  'comm. captain',
+  'senior inspector',
+  'inspector',
+  'dep. chf. f/alarm',
+  'chf. f/alarm disp',
+  'sr. investigator',
+  'investigator',
+  'asst. arson inv.',
+  'arson invest.',
+  'engineer/operator',
+  'firefighter',
+  'prob firefighter',
+  'ff trainee'
+];
+const rankByPosition = new Map(rankOrder.map((position, index) => [position, index]));
 
 function parseCsv(text) {
   const rows = [];
@@ -128,6 +153,13 @@ function renderResults() {
     (person.station || '').toLocaleLowerCase().includes(stationTerm) &&
     (person.shift || '').toLocaleLowerCase().includes(shiftTerm)
   );
+  matches.sort((left, right) => {
+    const leftRank = rankByPosition.get((left.position || '').trim().toLocaleLowerCase()) ?? Infinity;
+    const rightRank = rankByPosition.get((right.position || '').trim().toLocaleLowerCase()) ?? Infinity;
+    return leftRank - rightRank ||
+      (leftRank === Infinity && (left.position || '').localeCompare(right.position || '')) ||
+      (left.name || '').localeCompare(right.name || '');
+  });
   resultsBody.replaceChildren();
   message.hidden = matches.length > 0;
   message.textContent = 'No personnel match these filters.';
