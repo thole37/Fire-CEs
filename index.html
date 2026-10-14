@@ -223,9 +223,9 @@ function renderResults() {
     shift.textContent = assignment.shift;
     assignmentCount.textContent = assignment.titles.length;
     assignmentList.className = 'assignment-list';
-    for (const title of assignment.titles) {
+    for (const assigned of assignment.titles) {
       const item = document.createElement('li');
-      item.textContent = title;
+      item.textContent = assigned.title;
       assignmentList.append(item);
     }
     assignmentListCell.append(assignmentList);
@@ -258,6 +258,7 @@ function loadSelectedFile() {
       const emailIndex = column('Email');
       const positionIndex = column('User Positions');
       const assignmentIndex = column('Assignment');
+      const assignmentStartIndex = column('Assignment Start Date');
       const statusIndex = column('Assignment Status');
       const validUntilIndex = column('Credential Valid Until');
       const progressIndex = column('Progress');
@@ -318,7 +319,7 @@ function loadSelectedFile() {
         return;
       }
 
-      if ([disciplineIndex, nameIndex, emailIndex, positionIndex, assignmentIndex, statusIndex].some(index => index < 0)) {
+      if ([disciplineIndex, nameIndex, emailIndex, positionIndex, assignmentIndex, assignmentStartIndex, statusIndex].some(index => index < 0)) {
         throw new Error('The CSV is missing a required personnel column');
       }
       const personnel = new Map();
@@ -338,11 +339,21 @@ function loadSelectedFile() {
             titles: []
           });
         }
-        if ((values[statusIndex] || '').trim().toLocaleLowerCase() === 'past due') {
-          personnel.get(key).titles.push(values[assignmentIndex] || '');
+        const status = (values[statusIndex] || '').trim().toLocaleLowerCase();
+        if (status === 'past due' || status === 'not started') {
+          const startDate = (values[assignmentStartIndex] || '').trim();
+          const [month, day, year] = startDate.split('/').map(Number);
+          const sortDate = month && day && year ? new Date(year, month - 1, day).getTime() : Number.POSITIVE_INFINITY;
+          personnel.get(key).titles.push({
+            title: values[assignmentIndex] || '',
+            sortDate
+          });
         }
       }
       personnelRecords = [...personnel.values()];
+      for (const person of personnelRecords) {
+        person.titles.sort((first, second) => first.sortDate - second.sortDate);
+      }
       renderResults();
     })
     .catch(error => {
