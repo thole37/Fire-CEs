@@ -8,9 +8,11 @@
     body { margin: 0; padding: 32px 20px; background: #eef3f1; color: #202a32; font-family: "Segoe UI", Tahoma, sans-serif; }
     main { max-width: 1440px; margin: 0 auto; }
     .page-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+    .page-meta { max-width: 720px; text-align: right; }
     h1 { margin: 0 0 8px; font-size: 28px; }
     p { margin: 0; color: #53635f; }
     .as-of { margin-bottom: 8px; color: #344740; font-size: 16px; }
+    .data-notice { font-size: 13px; line-height: 1.45; }
     .source-controls { display: grid; grid-template-columns: minmax(0, 280px); gap: 12px; margin: 20px 0 14px; }
     .search { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0 14px; }
     label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 650; }
@@ -26,14 +28,17 @@
     .assignment-list { margin: 0; padding-left: 18px; }
     .assignment-list li + li { margin-top: 5px; }
     #message { padding: 24px; color: #53635f; text-align: center; }
-    @media (max-width: 600px) { body { padding: 24px 12px; } .search { grid-template-columns: 1fr; } #count { grid-column: auto; } }
+    @media (max-width: 600px) { body { padding: 24px 12px; } .search { grid-template-columns: 1fr; } #count { grid-column: auto; } .page-heading { align-items: flex-start; } .page-meta { max-width: 70%; } }
   </style>
 </head>
 <body>
   <main>
     <div class="page-heading">
       <h1>CE</h1>
-      <p class="as-of">As of: <time datetime="2026-10-15T08:15:08-05:00">October 15, 2026 at 8:15:08 AM (UTC-05:00)</time></p>
+      <div class="page-meta">
+        <p class="as-of">As of: <time datetime="2026-10-15T08:15:08-05:00">October 15, 2026 at 8:15:08 AM (UTC-05:00)</time></p>
+        <p class="data-notice">Be advised, this information is not live and may vary from the most current data available. To obtain the latest verified figures, please run the relevant report on the Lexipol (FireRescue1) website.</p>
+      </div>
     </div>
     <div class="source-controls">
       <div>
