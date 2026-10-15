@@ -257,10 +257,12 @@ function loadSelectedFile() {
   fetch(fileName)
     .then(response => {
       if (!response.ok) throw new Error(`Could not load ${fileName} (${response.status})`);
-      const modified = new Date(response.headers.get('Last-Modified') || Date.now());
       const asOfTime = document.getElementById('asOfTime');
-      asOfTime.dateTime = modified.toISOString();
-      asOfTime.textContent = modified.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'medium' });
+      if (!asOfTime.dateTime) {
+        const modified = new Date(response.headers.get('Last-Modified') || Date.now());
+        asOfTime.dateTime = modified.toISOString();
+        asOfTime.textContent = modified.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'medium' });
+      }
       return response.text();
     })
     .then(text => {
