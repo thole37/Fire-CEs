@@ -36,7 +36,7 @@
     <div class="page-heading">
       <h1>CE</h1>
       <div class="page-meta">
-        <p class="as-of">As of: <time datetime="2026-10-15T08:15:08-05:00">October 15, 2026 at 8:15:08 AM (UTC-05:00)</time></p>
+        <p class="as-of">As of: <time id="asOfTime">Loading...</time></p>
         <p class="data-notice">Be advised, this information is not live and may vary from the most current data available. To obtain the latest verified figures, please run the relevant report on the Lexipol (FireRescue1) website.</p>
       </div>
     </div>
@@ -257,6 +257,10 @@ function loadSelectedFile() {
   fetch(fileName)
     .then(response => {
       if (!response.ok) throw new Error(`Could not load ${fileName} (${response.status})`);
+      const modified = new Date(response.headers.get('Last-Modified') || Date.now());
+      const asOfTime = document.getElementById('asOfTime');
+      asOfTime.dateTime = modified.toISOString();
+      asOfTime.textContent = modified.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'medium' });
       return response.text();
     })
     .then(text => {
