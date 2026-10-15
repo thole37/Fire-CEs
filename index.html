@@ -257,12 +257,6 @@ function loadSelectedFile() {
   fetch(fileName)
     .then(response => {
       if (!response.ok) throw new Error(`Could not load ${fileName} (${response.status})`);
-      const asOfTime = document.getElementById('asOfTime');
-      if (!asOfTime.dateTime) {
-        const modified = new Date(response.headers.get('Last-Modified') || Date.now());
-        asOfTime.dateTime = modified.toISOString();
-        asOfTime.textContent = modified.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'medium' });
-      }
       return response.text();
     })
     .then(text => {
@@ -381,5 +375,17 @@ function loadSelectedFile() {
 
 dataFileSelect.addEventListener('change', loadSelectedFile);
 loadSelectedFile();
+
+// As-of date follows only the assignments report's modified time.
+fetch('assignments_report.csv', { method: 'HEAD', cache: 'no-store' })
+  .then(response => {
+    const header = response.headers.get('Last-Modified');
+    if (!response.ok || !header) throw new Error('No Last-Modified header');
+    const modified = new Date(header);
+    const asOfTime = document.getElementById('asOfTime');
+    asOfTime.dateTime = modified.toISOString();
+    asOfTime.textContent = modified.toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'medium' });
+  })
+  .catch(() => { document.getElementById('asOfTime').textContent = 'Unavailable'; });
 </script>
 </body>
